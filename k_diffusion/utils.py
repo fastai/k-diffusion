@@ -27,7 +27,7 @@ def to_pil_image(x):
         assert x.shape[0] == 1
         x = x[0]
     if x.shape[0] == 1:
-        x = x[0]
+        x = -x[0]
     return TF.to_pil_image((x.clamp(-1, 1) + 1) / 2)
 
 

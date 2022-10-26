@@ -1,18 +1,18 @@
 {
     "model": {
         "type": "image_v1",
-        "input_channels": 3,
-        "input_size": [32, 32],
+        "input_channels": 1,
+        "input_size": [28, 28],
         "patch_size": 1,
         "mapping_out": 256,
         "depths": [2, 4, 4],
-        "channels": [128, 256, 512],
-        "self_attn_depths": [false, true, true],
+        "channels": [128, 128, 256],
+        "self_attn_depths": [false, false, true],
         "has_variance": true,
         "dropout_rate": 0.05,
         "augment_wrapper": true,
         "augment_prob": 0.12,
-        "sigma_data": 0.5,
+        "sigma_data": 0.6162,
         "sigma_min": 1e-2,
         "sigma_max": 80,
         "sigma_sample_density": {
@@ -22,12 +22,12 @@
         }
     },
     "dataset": {
-        "type": "cifar10",
+        "type": "fashion",
         "location": "data"
     },
     "optimizer": {
         "type": "adamw",
-        "lr": 4e-4,
+        "lr": 8e-4,
         "betas": [0.95, 0.999],
         "eps": 1e-6,
         "weight_decay": 1e-3

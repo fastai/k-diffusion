@@ -23,7 +23,7 @@ import k_diffusion as K
 def main():
     p = argparse.ArgumentParser(description=__doc__,
                                 formatter_class=argparse.ArgumentDefaultsHelpFormatter)
-    p.add_argument('--batch-size', type=int, default=64,
+    p.add_argument('--batch-size', type=int, default=256,
                    help='the batch size')
     p.add_argument('--config', type=str, required=True,
                    help='the configuration file')
@@ -146,6 +146,8 @@ def main():
         train_set = K.utils.FolderOfImages(dataset_config['location'], transform=tf)
     elif dataset_config['type'] == 'cifar10':
         train_set = datasets.CIFAR10(dataset_config['location'], train=True, download=True, transform=tf)
+    elif dataset_config['type'] == 'fashion':
+        train_set = datasets.FashionMNIST(dataset_config['location'], train=True, download=True, transform=tf)
     elif dataset_config['type'] == 'mnist':
         train_set = datasets.MNIST(dataset_config['location'], train=True, download=True, transform=tf)
     elif dataset_config['type'] == 'huggingface':
