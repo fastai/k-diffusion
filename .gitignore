@@ -1,3 +1,4 @@
+outputs/
 *_state.json
 *.swp
 venv*

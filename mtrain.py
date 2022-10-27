@@ -38,8 +38,10 @@ def main(
     #choices=['fork', 'forkserver', 'spawn'],
     mp.set_start_method(start_method)
     torch.backends.cuda.matmul.allow_tf32 = True
+    path = Path('outputs')
+    path.mkdir(exist_ok=True)
 
-    config = K.config.load_cfg(open(config))
+    config = K.config.load_config(open(config))
     model_cfg = config['model']
     dataset_cfg = config['dataset']
     opt_cfg = config['optimizer']
@@ -52,6 +54,10 @@ def main(
 
     ddp_kwargs = accelerate.DistributedDataParallelKwargs(find_unused_parameters=model_cfg['skip_stages'] > 0)
     accelerator = accelerate.Accelerator(kwargs_handlers=[ddp_kwargs], gradient_accumulation_steps=grad_accum_steps)
+
+    def p(*s):
+        if accelerator.is_main_process: print(*s)
+
     device = accelerator.device
     print(f'Process {accelerator.process_index} using device: {device}', flush=True)
 
@@ -60,7 +66,7 @@ def main(
         torch.manual_seed(seeds[accelerator.process_index])
 
     inner_model = K.config.make_model(config)
-    if accelerator.is_main_process: print('Parameters:', K.utils.n_params(inner_model))
+    p('Parameters:', K.utils.n_params(inner_model))
 
     if not lr: lr = opt_cfg['lr']
     if opt_cfg['type'] == 'adamw':
@@ -105,9 +111,8 @@ def main(
         train_set = train_set['train']
     else: raise ValueError('Invalid dataset type')
 
-    if accelerator.is_main_process:
-        try: print('Number of items in dataset:', len(train_set))
-        except TypeError: pass
+    try: p('Number of items in dataset:', len(train_set))
+    except TypeError: pass
 
     image_key = dataset_cfg.get('image_key', 0)
     train_dl = data.DataLoader(train_set, batch_size, shuffle=True, drop_last=True, num_workers=num_workers, persistent_workers=True)
@@ -133,14 +138,14 @@ def main(
     sample_density = K.config.make_sample_density(model_cfg)
     model = K.config.make_denoiser_wrapper(config)(inner_model)
     model_ema = deepcopy(model)
-    state_path = Path(f'{name}_state.json')
+    state_path = path/f'{name}_state.json'
 
     if state_path.exists() or resume:
         if resume: ckpt_path = resume
         if not resume:
             state = json.load(open(state_path))
             ckpt_path = state['latest_checkpoint']
-        if accelerator.is_main_process: print(f'Resuming from {ckpt_path}...')
+        p(f'Resuming from {ckpt_path}...')
         ckpt = torch.load(ckpt_path, map_location='cpu')
         accelerator.unwrap_model(model.inner_model).load_state_dict(ckpt['model'])
         accelerator.unwrap_model(model_ema.inner_model).load_state_dict(ckpt['model_ema'])
@@ -157,16 +162,16 @@ def main(
     if evaluate_enabled:
         extractor = K.evaluation.InceptionV3FeatureExtractor(device=device)
         train_iter = iter(train_dl)
-        if accelerator.is_main_process: print('Computing features for reals...')
+        p('Computing features for reals...')
         reals_features = K.evaluation.compute_features(accelerator, lambda x: next(train_iter)[image_key][1], extractor, evaluate_n, batch_size)
-        if accelerator.is_main_process: metrics_log = K.utils.CSVLogger(f'{name}_metrics.csv', ['step', 'fid', 'kid'])
+        if accelerator.is_main_process: metrics_log = K.utils.CSVLogger(path/f'{name}_metrics.csv', ['step', 'fid', 'kid'])
         del train_iter
 
     @torch.no_grad()
     @K.utils.eval_mode(model_ema)
     def demo():
         if accelerator.is_main_process: tqdm.write('Sampling...')
-        filename = f'{name}_demo_{step:08}.png'
+        filename = path/f'{name}_demo_{step:08}.png'
         n_per_proc = math.ceil(sample_n / accelerator.num_processes)
         x = torch.randn([n_per_proc, model_cfg['input_channels'], size[0], size[1]], device=device) * sigma_max
         sigmas = K.sampling.get_sigmas_karras(50, sigma_min, sigma_max, rho=7., device=device)
@@ -195,7 +200,7 @@ def main(
 
     def save():
         accelerator.wait_for_everyone()
-        filename = f'{name}_{step:08}.pth'
+        filename = path/f'{name}_{step:08}.pth'
         if accelerator.is_main_process: tqdm.write(f'Saving to {filename}...')
         obj = {
             'model': accelerator.unwrap_model(model.inner_model).state_dict(),
@@ -236,14 +241,13 @@ def main(
 
                 if accelerator.is_main_process:
                     if step % 25 == 0:
-                        if gns: tqdm.write(f'Epoch: {epoch}, step: {step}, loss: {loss.item():g}, gns: {gns_stats.get_gns():g}')
-                        else: tqdm.write(f'Epoch: {epoch}, step: {step}, loss: {loss.item():g}')
+                        s = f'Epoch: {epoch}, step: {step}, loss: {loss.item():g}, lr: {lr}'
+                        tqdm.write(f'{s}, gns: {gns_stats.get_gns():g}' if gns else s)
 
                 if step % demo_every == 0: demo()
                 if evaluate_enabled and step > 0 and step % evaluate_every == 0: evaluate()
                 if step > 0 and step % save_every == 0: save()
                 step += 1
             epoch += 1
-    except KeyboardInterrupt:
-        pass
+    except KeyboardInterrupt: pass
 
