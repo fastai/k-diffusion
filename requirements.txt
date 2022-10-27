@@ -1,6 +1,7 @@
 accelerate
 clip-anytorch
 einops
+fastcore
 jsonmerge
 kornia
 Pillow
