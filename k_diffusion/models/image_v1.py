@@ -113,6 +113,10 @@ class ImageDenoiserModelV1(nn.Module):
         self.u_net = layers.UNet(d_blocks, reversed(u_blocks), skip_stages=skip_stages)
 
     def forward(self, input, sigma, mapping_cond=None, unet_cond=None, cross_cond=None, cross_cond_padding=None, return_variance=False):
+        #print(sigma)
+        #import pdb; pdb.set_trace()
+        #sigma = sigma*0. + 0.1
+        #sigma = (sigma.clip(0,1)*4+0.25).round()/4+0.01
         c_noise = sigma.log() / 4
         timestep_embed = self.timestep_embed(utils.append_dims(c_noise, 2))
         mapping_cond_embed = torch.zeros_like(timestep_embed) if mapping_cond is None else self.mapping_cond(mapping_cond)
