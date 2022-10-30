@@ -15,15 +15,15 @@ from tqdm.auto import trange, tqdm
 
 import k_diffusion as K
 
-#sampler = K.sampling.sample_lms
+sampler = K.sampling.sample_lms
 #sampler = K.sampling.sample_euler
-sampler = K.sampling.sample_heun
+#sampler = K.sampling.sample_heun
 
 @call_parse
 def main(
     config:str, # the configuration file
     batch_size:int=256, # the batch size
-    demo_every:int=500, # save a demo grid every this many steps
+    demo_every:int=100, # save a demo grid every this many steps
     sample_steps:int=50,  # number of steps to use when sampling
     evaluate_every:int=5000, # save a demo grid every this many steps
     evaluate_n:int=2000, # the number of samples to draw to evaluate

@@ -119,7 +119,7 @@ class ImageDenoiserModelV1(nn.Module):
         #sigma = (sigma.clip(0,1)*4+0.25).round()/4+0.01
         #sigma = sigma.clip(0.,0.5)
         #sigma = sigma * (torch.rand_like(sigma)+0.5)
-        c_noise = sigma.log()
+        c_noise = sigma.log() / 4
         timestep_embed = self.timestep_embed(utils.append_dims(c_noise, 2)) #*0.
         mapping_cond_embed = torch.zeros_like(timestep_embed) if mapping_cond is None else self.mapping_cond(mapping_cond)
         mapping_out = self.mapping(timestep_embed + mapping_cond_embed)

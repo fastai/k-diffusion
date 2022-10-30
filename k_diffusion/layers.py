@@ -53,8 +53,8 @@ class Denoiser(nn.Module):
         noise = noise*sig
         model_output = self.inner_model(input+noise, sigma, **kwargs)
         #return (model_output.sigmoid()-noise.sigmoid()).pow(2).flatten(1).mean(1)
-        #return (model_output-noise).pow(2).flatten(1).mean(1)
-        return (model_output-noise).abs().flatten(1).mean(1)
+        return (model_output-noise).pow(2).flatten(1).mean(1)
+        #return (model_output-noise).abs().flatten(1).mean(1)
 
     def _forward(self, input, sigma, **kwargs): return input - self.inner_model(input, sigma, **kwargs)
 
