@@ -21,6 +21,7 @@ class Denoiser(nn.Module):
         c_skip = self.sigma_data ** 2 / (sigma ** 2 + self.sigma_data ** 2)
         c_out = sigma * self.sigma_data / (sigma ** 2 + self.sigma_data ** 2) ** 0.5
         c_in = 1 / (sigma ** 2 + self.sigma_data ** 2) ** 0.5
+        #c_skip,c_out,c_in = torch.ones_like(sigma),-sigma,1/(sigma**2+1).sqrt()
         return c_skip, c_out, c_in
 
     def loss(self, input, noise, sigma, **kwargs):
@@ -33,6 +34,29 @@ class Denoiser(nn.Module):
     def forward(self, input, sigma, **kwargs):
         c_skip, c_out, c_in = [utils.append_dims(x, input.ndim) for x in self.get_scalings(sigma)]
         return self.inner_model(input * c_in, sigma, **kwargs) * c_out + input * c_skip
+
+    def _loss(self, input, noise, sigma, **kwargs):
+        sig = utils.append_dims(sigma, input.ndim)
+        noised_input = input + noise*sig
+        sig2 = (sig**2+1).sqrt()
+        model_output = self.inner_model(noised_input/sig2, sigma, **kwargs)
+        target = (noised_input-input) / sig
+        return (model_output-target).pow(2).flatten(1).mean(1)
+
+    def _forward(self, input, sigma, **kwargs):
+        sig = utils.append_dims(sigma, input.ndim)
+        sig2 = (sig**2+1).sqrt()
+        return input - self.inner_model(input/sig2, sigma, **kwargs) * sig
+
+    def _loss(self, input, noise, sigma, **kwargs):
+        sig = utils.append_dims(sigma, input.ndim)
+        noise = noise*sig
+        model_output = self.inner_model(input+noise, sigma, **kwargs)
+        #return (model_output.sigmoid()-noise.sigmoid()).pow(2).flatten(1).mean(1)
+        #return (model_output-noise).pow(2).flatten(1).mean(1)
+        return (model_output-noise).abs().flatten(1).mean(1)
+
+    def _forward(self, input, sigma, **kwargs): return input - self.inner_model(input, sigma, **kwargs)
 
 
 class DenoiserWithVariance(Denoiser):
@@ -217,12 +241,13 @@ class Upsample2d(nn.Module):
 # Embeddings
 
 class FourierFeatures(nn.Module):
-    def __init__(self, in_features, out_features, std=1.):
+    def __init__(self, in_features, out_features):
         super().__init__()
         assert out_features % 2 == 0
-        self.register_buffer('weight', torch.randn([out_features // 2, in_features]) * std)
+        self.register_buffer('weight', torch.randn([out_features // 2, in_features]) / in_features)
 
     def forward(self, input):
+        #f = input@self.weight.T
         f = 2 * math.pi * input @ self.weight.T
         return torch.cat([f.cos(), f.sin()], dim=-1)
 
