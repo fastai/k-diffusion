@@ -15,15 +15,15 @@ from tqdm.auto import trange, tqdm
 
 import k_diffusion as K
 
-sampler = K.sampling.sample_lms
+#sampler = K.sampling.sample_lms
 #sampler = K.sampling.sample_euler
-#sampler = K.sampling.sample_heun
+sampler = K.sampling.sample_heun
 
 @call_parse
 def main(
     config:str, # the configuration file
     batch_size:int=256, # the batch size
-    demo_every:int=100, # save a demo grid every this many steps
+    demo_every:int=1000, # save a demo grid every this many steps
     sample_steps:int=50,  # number of steps to use when sampling
     evaluate_every:int=5000, # save a demo grid every this many steps
     evaluate_n:int=2000, # the number of samples to draw to evaluate
@@ -179,7 +179,7 @@ def main(
                 ema_sched.step()
 
                 if step % 25 == 0: tqdm.write(f'Epoch: {epoch}, step: {step}, loss: {loss.item():g}, lr: {lr}')
-                if step % demo_every == 0: demo()
+                if step in (100,200,500) or step % demo_every == 0: demo()
                 if evaluate_enabled and step > 0 and step % evaluate_every == 0: evaluate()
                 if step > 0 and step % save_every == 0: save()
                 step += 1

@@ -21,7 +21,12 @@ class Denoiser(nn.Module):
         c_skip = self.sigma_data ** 2 / (sigma ** 2 + self.sigma_data ** 2)
         c_out = sigma * self.sigma_data / (sigma ** 2 + self.sigma_data ** 2) ** 0.5
         c_in = 1 / (sigma ** 2 + self.sigma_data ** 2) ** 0.5
-        #c_skip,c_out,c_in = torch.ones_like(sigma),-sigma,1/(sigma**2+1).sqrt()
+        #c_skip,c_out,c_in = ones,-sigma,1/(sigma**2+1).sqrt()
+        #c_skip,c_out,c_in = ones,-sigma,1/sigma
+        #c_skip,c_out,c_in = ones,sigma,ones
+        ones = torch.ones_like(sigma)
+        zeros = torch.zeros_like(sigma)
+        c_skip,c_out,c_in = ones,-ones,ones
         return c_skip, c_out, c_in
 
     def loss(self, input, noise, sigma, **kwargs):
@@ -37,6 +42,14 @@ class Denoiser(nn.Module):
 
     def _loss(self, input, noise, sigma, **kwargs):
         sig = utils.append_dims(sigma, input.ndim)
+        noise = noise*sig
+        model_output = self.inner_model(input+noise, sigma, **kwargs)
+        return (model_output-noise).pow(2).flatten(1).mean(1)
+
+    def _forward(self, input, sigma, **kwargs): return input - self.inner_model(input, sigma, **kwargs)
+
+    def _loss(self, input, noise, sigma, **kwargs):
+        sig = utils.append_dims(sigma, input.ndim)
         noised_input = input + noise*sig
         sig2 = (sig**2+1).sqrt()
         model_output = self.inner_model(noised_input/sig2, sigma, **kwargs)
@@ -47,16 +60,6 @@ class Denoiser(nn.Module):
         sig = utils.append_dims(sigma, input.ndim)
         sig2 = (sig**2+1).sqrt()
         return input - self.inner_model(input/sig2, sigma, **kwargs) * sig
-
-    def _loss(self, input, noise, sigma, **kwargs):
-        sig = utils.append_dims(sigma, input.ndim)
-        noise = noise*sig
-        model_output = self.inner_model(input+noise, sigma, **kwargs)
-        #return (model_output.sigmoid()-noise.sigmoid()).pow(2).flatten(1).mean(1)
-        return (model_output-noise).pow(2).flatten(1).mean(1)
-        #return (model_output-noise).abs().flatten(1).mean(1)
-
-    def _forward(self, input, sigma, **kwargs): return input - self.inner_model(input, sigma, **kwargs)
 
 
 class DenoiserWithVariance(Denoiser):
