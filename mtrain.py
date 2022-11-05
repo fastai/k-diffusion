@@ -15,9 +15,9 @@ from tqdm.auto import trange, tqdm
 
 import k_diffusion as K
 
-#sampler = K.sampling.sample_lms
+sampler = K.sampling.sample_lms
 #sampler = K.sampling.sample_euler
-sampler = K.sampling.sample_heun
+#sampler = K.sampling.sample_heun
 
 @call_parse
 def main(

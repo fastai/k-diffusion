@@ -85,13 +85,14 @@ class MappingNet(nn.Sequential):
 
 
 class ImageDenoiserModelV1(nn.Module):
-    def __init__(self, c_in, feats_in, depths, channels, self_attn_depths, cross_attn_depths=None, mapping_cond_dim=0, unet_cond_dim=0, cross_cond_dim=0, dropout_rate=0., patch_size=1, skip_stages=0, has_variance=False):
+    def __init__(self, c_in, feats_in, depths, channels, self_attn_depths, cross_attn_depths=None, mapping_cond_dim=0, unet_cond_dim=0, cross_cond_dim=0, dropout_rate=0., patch_size=1, skip_stages=0, has_variance=False, t_embed=True):
         super().__init__()
         self.c_in = c_in
         self.channels = channels
         self.unet_cond_dim = unet_cond_dim
         self.patch_size = patch_size
         self.has_variance = has_variance
+        self.t_embed = t_embed
         self.timestep_embed = layers.FourierFeatures(1, feats_in)
         if mapping_cond_dim > 0:
             self.mapping_cond = nn.Linear(mapping_cond_dim, feats_in, bias=False)
@@ -120,7 +121,8 @@ class ImageDenoiserModelV1(nn.Module):
         #sigma = sigma.clip(0.,0.5)
         #sigma = sigma * (torch.rand_like(sigma)+0.5)
         c_noise = sigma.log() / 4
-        timestep_embed = self.timestep_embed(utils.append_dims(c_noise, 2)) #*0.
+        timestep_embed = self.timestep_embed(utils.append_dims(c_noise, 2))
+        if not self.t_embed: timestep_embed *= 0.
         mapping_cond_embed = torch.zeros_like(timestep_embed) if mapping_cond is None else self.mapping_cond(mapping_cond)
         mapping_out = self.mapping(timestep_embed + mapping_cond_embed)
         cond = {'cond': mapping_out}

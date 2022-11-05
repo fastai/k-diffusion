@@ -9,24 +9,26 @@ from . import utils
 
 # Karras et al. preconditioned denoiser
 
+def huber(x):
+    a = x.abs()
+    return (0.5*x**2).where(a<=1, a-0.5)
+
 class Denoiser(nn.Module):
     """A Karras et al. preconditioner for denoising diffusion models."""
 
-    def __init__(self, inner_model, sigma_data=1.):
+    def __init__(self, inner_model, sigma_data=1., unscaled=False):
         super().__init__()
-        self.inner_model = inner_model
-        self.sigma_data = sigma_data
+        self.inner_model,self.sigma_data,self.unscaled = inner_model,sigma_data,unscaled
 
     def get_scalings(self, sigma):
         c_skip = self.sigma_data ** 2 / (sigma ** 2 + self.sigma_data ** 2)
         c_out = sigma * self.sigma_data / (sigma ** 2 + self.sigma_data ** 2) ** 0.5
         c_in = 1 / (sigma ** 2 + self.sigma_data ** 2) ** 0.5
+        ones,zeros = torch.ones_like(sigma),torch.zeros_like(sigma)
         #c_skip,c_out,c_in = ones,-sigma,1/(sigma**2+1).sqrt()
         #c_skip,c_out,c_in = ones,-sigma,1/sigma
         #c_skip,c_out,c_in = ones,sigma,ones
-        ones = torch.ones_like(sigma)
-        zeros = torch.zeros_like(sigma)
-        c_skip,c_out,c_in = ones,-ones,ones
+        if self.unscaled: c_skip,c_out,c_in = ones,-ones,ones
         return c_skip, c_out, c_in
 
     def loss(self, input, noise, sigma, **kwargs):

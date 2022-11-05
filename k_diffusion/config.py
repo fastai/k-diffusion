@@ -66,10 +66,9 @@ def make_model(config):
         cross_cond_dim=config['cross_cond_dim'],
         skip_stages=config['skip_stages'],
         has_variance=config['has_variance'],
+        t_embed=config.get('t_embed', True),
     )
-    if config['augment_wrapper']:
-        model = augmentation.KarrasAugmentWrapper(model)
-    return model
+    return augmentation.KarrasAugmentWrapper(model) if config['augment_wrapper'] else model
 
 
 def make_denoiser_wrapper(config):
@@ -77,7 +76,7 @@ def make_denoiser_wrapper(config):
     sigma_data = config.get('sigma_data', 1.)
     has_variance = config.get('has_variance', False)
     if not has_variance:
-        return partial(layers.Denoiser, sigma_data=sigma_data)
+        return partial(layers.Denoiser, sigma_data=sigma_data, unscaled=config.get('unscaled', False))
     return partial(layers.DenoiserWithVariance, sigma_data=sigma_data)
 
 
