@@ -1,17 +1,16 @@
 #!/usr/bin/env python3
 """Trains Karras et al. (2022) diffusion models."""
 
-import argparse , math , json , accelerate, torch
+import math, accelerate, torch
 from copy import deepcopy
 from functools import partial
 from pathlib import Path
 from fastcore.script import call_parse
 
-from torch import nn, optim
-from torch import multiprocessing as mp
+from torch import optim, multiprocessing as mp
 from torch.utils import data
 from torchvision import datasets, transforms, utils
-from tqdm.auto import trange, tqdm
+from tqdm.auto import tqdm
 
 import k_diffusion as K
 
