@@ -135,7 +135,7 @@ def main(
         sigmas = K.sampling.get_sigmas_karras(sample_steps, sigma_min, sigma_max, rho=7., device=device)
         x_0 = sampler(model_ema, x, sigmas)
         x_0 = x_0[:sample_n]
-        grid = utils.make_grid(-x_0, nrow=math.ceil(sample_n ** 0.5), padding=0)
+        grid = utils.make_grid(x_0, nrow=math.ceil(sample_n ** 0.5), padding=0)
         K.utils.to_pil_image(grid).save(filename)
 
     @torch.no_grad()

@@ -42,27 +42,6 @@ class Denoiser(nn.Module):
         c_skip, c_out, c_in = [utils.append_dims(x, input.ndim) for x in self.get_scalings(sigma)]
         return self.inner_model(input * c_in, sigma, **kwargs) * c_out + input * c_skip
 
-    def _loss(self, input, noise, sigma, **kwargs):
-        sig = utils.append_dims(sigma, input.ndim)
-        noise = noise*sig
-        model_output = self.inner_model(input+noise, sigma, **kwargs)
-        return (model_output-noise).pow(2).flatten(1).mean(1)
-
-    def _forward(self, input, sigma, **kwargs): return input - self.inner_model(input, sigma, **kwargs)
-
-    def _loss(self, input, noise, sigma, **kwargs):
-        sig = utils.append_dims(sigma, input.ndim)
-        noised_input = input + noise*sig
-        sig2 = (sig**2+1).sqrt()
-        model_output = self.inner_model(noised_input/sig2, sigma, **kwargs)
-        target = (noised_input-input) / sig
-        return (model_output-target).pow(2).flatten(1).mean(1)
-
-    def _forward(self, input, sigma, **kwargs):
-        sig = utils.append_dims(sigma, input.ndim)
-        sig2 = (sig**2+1).sqrt()
-        return input - self.inner_model(input/sig2, sigma, **kwargs) * sig
-
 
 class DenoiserWithVariance(Denoiser):
     def loss(self, input, noise, sigma, **kwargs):
